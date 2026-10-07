@@ -1,0 +1,59 @@
+ :root {
+  color-scheme: dark;
+  --bg: #111318;
+  --surface: #17191f;
+  --sidebar: #15171c;
+  --input: #20232a;
+  --hover: #292c34;
+  --border: #343842;
+  --text: #f2f3f5;
+  --muted: #afb5c0;
+  --accent: #386be0;
+  --accent-text: #ffffff;
+  --bubble: #252830;
+  --own-muted: #e3eaff;
+  --danger: #ff9b9b;
+  --menu: #1b1e26;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --sidebar: #edf1f7;
+  --input: #f0f3f8;
+  --hover: #e1e8f2;
+  --border: #cbd4e1;
+  --text: #202938;
+  --muted: #59677b;
+  --accent: #315fc9;
+  --bubble: #e6ecf5;
+  --danger: #b42338;
+  --menu: #ffffff;
+}
+:root[data-theme="pink"] {
+  color-scheme: light;
+  --bg: #fff3f8;
+  --surface: #fffafd;
+  --sidebar: #fce7f1;
+  --input: #fff0f6;
+  --hover: #f8d5e6;
+  --border: #e6b9ce;
+  --text: #442337;
+  --muted: #80546c;
+  --accent: #b82c70;
+  --bubble: #f8deec;
+  --own-muted: #ffe4f1;
+  --danger: #ad2346;
+  --menu: #fffafd;
+}
+button, input, select { font: inherit; }
+.profile-open-button, .theme-select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input);
+  color: var(--text);
+}
+.profile-open-button { cursor: pointer; }
+.header { flex-wrap: wrap; gap: 12px; }
+.header__actions { flex-wrap: wrap; }
