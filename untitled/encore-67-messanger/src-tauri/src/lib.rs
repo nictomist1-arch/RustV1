@@ -161,6 +161,12 @@ pub fn run() {
             sql: include_str!("../migrations/0005_message_edited_at.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "chat_participants",
+            sql: include_str!("../migrations/0006_chat_participants.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

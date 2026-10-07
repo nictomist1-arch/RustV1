@@ -10,4 +10,5 @@ export interface User{
 export interface ProfileUpdate{
     displayName: string;
     status: string;
+    avatarPath: string | null;
 }

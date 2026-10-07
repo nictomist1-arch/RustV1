@@ -9,6 +9,7 @@ defineProps<{
 
 const emit = defineEmits<{
   select: [chat: Chat];
+  create: [];
 }>();
 
 function selectChat(chat: Chat){
@@ -19,7 +20,10 @@ function selectChat(chat: Chat){
 <template>
 <aside class="sidebar">
   <div class="sidebar__header">
-    Чаты
+    <span>Чаты</span>
+    <button type="button" class="sidebar__create" @click="emit('create')">
+      Новый чат
+    </button>
   </div>
 
   <div class="sidebar__list">
@@ -63,10 +67,29 @@ function selectChat(chat: Chat){
 }
 
 .sidebar__header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   flex-shrink: 0;
   padding: 18px;
   border-bottom: 1px solid var(--bubble);
   font-weight: 600;
+}
+
+.sidebar__create{
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sidebar__create:hover{
+  background: var(--hover);
 }
 
 .sidebar__list{

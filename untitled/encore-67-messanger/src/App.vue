@@ -3,10 +3,54 @@
 import type { User } from "./types/user";
 
 import ProfilerEditor from "./components/ProfilerEditor.vue";
+import ChatCreator from "./components/ChatCreator.vue";
+import type { ChatCreate } from "./types/chats";
 
 import type { ProfileUpdate } from "./types/user";
 
 const isProfileOpen = ref(false);
+const isChatCreatorOpen = ref(false);
+const isCreatingChat = ref(false);
+const chatCreateError = ref("");
+
+function openChatCreator(){
+  chatCreateError.value = "";
+  isChatCreatorOpen.value = true;
+}
+
+function closeChatCreator(){
+  if (!isCreatingChat.value){
+    isChatCreatorOpen.value = false;
+  }
+}
+
+async function createChat(draft: ChatCreate){
+  if (!db || !currentUser.value || isCreatingChat.value) return;
+  const title = draft.title.trim();
+  const selectedIds = [...new Set(draft.participantIds)]
+    .filter(id => id !== currentUser.value?.id && users.value.some(user => user.id === id));
+  if (!title || title.length > 60 || selectedIds.length === 0) return;
+
+  isCreatingChat.value = true;
+  chatCreateError.value = "";
+
+  try {
+    const participantIds = [currentUser.value.id, ...selectedIds];
+    const result = await db.execute(
+      `INSERT INTO chats (title, subtitle, participant_ids) VALUES ($1, $2, $3)`,
+      [title, `Участников: ${participantIds.length}`, JSON.stringify(participantIds)],
+    );
+    await loadChats();
+    const createdChat = chats.value.find(chat => chat.id === result.lastInsertId);
+    if (createdChat) await selectChat(createdChat);
+    isChatCreatorOpen.value = false;
+  } catch (error) {
+    console.error(error);
+    chatCreateError.value = "Не удалось создать чат. Попробуйте ещё раз.";
+  } finally {
+    isCreatingChat.value = false;
+  }
+}
 const editingMessage = ref<Message | null>(null);
 const isSavingEdit = ref(false);
 function startEditing(message: Message) {
@@ -34,19 +78,22 @@ async function saveProfile( profile: ProfileUpdate, ){
 
       SET
           display_name = $1,
-          status = $2
+          status = $2,
+          avatar_path = $3
 
-      WHERE id = $3
+      WHERE id = $4
       `,
       [
       profile.displayName,
       profile.status,
+      profile.avatarPath,
       currentUser.value.id,
           ]
   );
 
   currentUser.value.display_name = profile.displayName;
   currentUser.value.status = profile.status;
+  currentUser.value.avatar_path = profile.avatarPath;
 
   if(activeChat.value){
     await loadMessages(activeChat.value.id);
@@ -78,11 +125,19 @@ const users = ref<User[]>([]);
 const currentUser = ref<User | null>(null);
 
 async function selectUser(user: User){
-  if (isSavingEdit.value) return;
+  if (isSavingEdit.value || isCreatingChat.value) return;
   cancelEditing();
+  const previousChatId = activeChat.value?.id;
+  activeChat.value = null;
+  activeChatId.value = 0;
+  messages.value = [];
+  chats.value = [];
   currentUser.value = user;
-  if (activeChat.value) await markChatRead(activeChat.value.id);
+  isChatCreatorOpen.value = false;
+  isProfileOpen.value = false;
   await loadChats();
+  const nextChat = chats.value.find(chat => chat.id === previousChatId) ?? chats.value[0];
+  if (nextChat) await selectChat(nextChat);
 }
 const messages = ref<Message[]>([]);
 
@@ -110,7 +165,10 @@ async function loadChats(){
        WHERE messages.chat_id = chats.id AND messages.author_id != $1
        AND messages.id > COALESCE((SELECT last_read_message_id FROM chat_reads
          WHERE user_id = $1 AND chat_id = chats.id), 0)) AS unread_count
-     FROM chats ORDER BY chats.id ASC`, [currentUser.value.id],
+     FROM chats
+     WHERE chats.participant_ids IS NULL
+       OR EXISTS (SELECT 1 FROM json_each(chats.participant_ids) WHERE value = $1)
+     ORDER BY chats.id ASC`, [currentUser.value.id],
   );
 }
 async function markChatRead(chatId: number) {
@@ -337,6 +395,7 @@ onMounted(async()=>{
           :chats="chats"
           :active-chat-id="activeChatId"
           @select="selectChat"
+          @create="openChatCreator"
       />
       <section class="chat">
         <template v-if="activeChat">
@@ -364,6 +423,15 @@ onMounted(async()=>{
         </template>
       </section>
     </div>
+    <ChatCreator
+      v-if="isChatCreatorOpen && currentUser"
+      :users="users"
+      :current-user-id="currentUser.id"
+      :saving="isCreatingChat"
+      :error="chatCreateError"
+      @create="createChat"
+      @close="closeChatCreator"
+    />
     <ProfilerEditor
     v-if="isProfileOpen && currentUser"
     :key="currentUser.id"
