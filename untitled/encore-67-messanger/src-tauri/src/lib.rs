@@ -167,6 +167,24 @@ pub fn run() {
             sql: include_str!("../migrations/0006_chat_participants.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "channels",
+            sql: include_str!("../migrations/0007_channels.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 8,
+            description: "post_comments",
+            sql: include_str!("../migrations/0008_post_comments.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 9,
+            description: "user_passwords",
+            sql: include_str!("../migrations/0009_user_passwords.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

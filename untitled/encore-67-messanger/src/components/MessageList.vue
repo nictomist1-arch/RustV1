@@ -7,17 +7,24 @@ import {
 } from "vue";
 
 import MessageBubble from "./MessageBubble.vue";
+import PostComments from "./PostComments.vue";
+import type { PostComment } from "../types/comment";
 
 import type {Message} from "../types/message.ts";
 
 const props = defineProps<{
   messages: Message[];
   currentUserId: number;
+  readOnly: boolean;
+  isChannel: boolean;
+  comments: PostComment[];
+  commentingPostId: number | null;
 }>();
 
 const emit = defineEmits<{
   edit: [message: Message];
   delete: [messageId: number];
+  comment: [message: Message];
 }>();
 
 const bottomAnchor = useTemplateRef<HTMLDivElement>("bottom-anchor");
@@ -51,16 +58,26 @@ onMounted(scrollToBottom);
           class="empty"
       >
         <strong> Здесь пока пусто </strong>
-        <span> Напишите первое сообщение </span>
+        <span>{{ readOnly ? 'Постов пока нет' : 'Напишите первое сообщение' }}</span>
       </div>
       <MessageBubble
           v-for="message in messages"
           :key="message.id"
           :message="message"
           :is-own="message.author_id === currentUserId"
+          :read-only="readOnly"
+          :is-channel="isChannel"
           @edit="emit('edit', message)"
           @delete="emit('delete', message.id)"
-      />
+          @comment="emit('comment', message)"
+      >
+        <template v-if="isChannel" #comments>
+          <PostComments
+            :comments="comments.filter(comment => comment.message_id === message.id)"
+            :selected="commentingPostId === message.id"
+          />
+        </template>
+      </MessageBubble>
       <div
         ref="bottom-anchor"
         class="bottom-anchor"

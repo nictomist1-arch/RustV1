@@ -2,25 +2,20 @@
 
 import { currentTheme, setTheme, themes, type Theme } from "../themes/themes";
 
-import UserSwitcher from "./UserSwitcher.vue";
-
 import type { User } from "../types/user";
 
 
 defineProps<{
   status: string;
-  users: User[];
   currentUser: User;
+  busy: boolean;
 }>();
 
 const emit = defineEmits<{
-  select: [user: User];
   profile: [];
+  logout: [];
 }>();
 
-function selectUser(user: User){
-  emit("select", user);
-}
 </script>
 
 <template>
@@ -36,17 +31,21 @@ function selectUser(user: User){
               @change="setTheme(($event.target as HTMLSelectElement).value as Theme)">
         <option v-for="theme in themes" :key="theme.id" :value="theme.id">{{ theme.title }}</option>
       </select>
-      <UserSwitcher
-          :users="users"
-          :current-user-id="currentUser.id"
-          @select="selectUser"
-      />
+      <span class="header__user">{{ currentUser.display_name }}</span>
       <button
         type="button"
         class="profile-open-button"
         @click="emit('profile')"
         >
         Профиль
+      </button>
+      <button
+        type="button"
+        class="profile-open-button"
+        :disabled="busy"
+        @click="emit('logout')"
+      >
+        Выйти
       </button>
     </div>
     <span class="badge">
@@ -56,6 +55,15 @@ function selectUser(user: User){
 </template>
 
 <style scoped>
+.header__user{
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.profile-open-button:disabled{
+  opacity: 0.5;
+  cursor: default;
+}
 
 
 .header{

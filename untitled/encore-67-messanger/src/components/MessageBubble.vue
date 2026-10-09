@@ -18,11 +18,14 @@ import type { Message } from "../types/message";
 const props = defineProps<{
   message: Message;
   isOwn: boolean;
+  readOnly: boolean;
+  isChannel: boolean;
 }>();
 
 const emit = defineEmits<{
   edit: [];
   delete: [];
+  comment: [];
 }>();
 
 const isLightboxOpen = ref(false);
@@ -52,7 +55,7 @@ const canCopy = computed(() => {
 });
 
 const canEdit = computed(() => {
-  return props.isOwn && props.message.type === "text";
+  return !props.readOnly && props.isOwn && props.message.type === "text";
 });
 
 function closeMenu(){
@@ -125,8 +128,20 @@ function startEdit(){
 }
 
 function deleteMessage(){
+  if (props.readOnly){
+    return;
+  }
   closeMenu();
   emit("delete");
+}
+
+function startComment(){
+  if (!props.isChannel){
+    return;
+  }
+
+  closeMenu();
+  emit("comment");
 }
 
 watch(
@@ -212,6 +227,7 @@ onUnmounted(() => {
           </template>
         </footer>
       </article>
+      <slot name="comments"></slot>
     </div>
   </div>
 
@@ -236,6 +252,14 @@ onUnmounted(() => {
         {{ copyState }}
       </button>
       <button
+        v-if="isChannel"
+        class="action-btn"
+        type="button"
+        @click="startComment"
+      >
+        Комментировать
+      </button>
+      <button
         v-if="canEdit"
         class="action-btn"
         type="button"
@@ -244,6 +268,7 @@ onUnmounted(() => {
         Изменить
       </button>
       <button
+        v-if="!readOnly"
         class="action-btn action-btn--danger"
         type="button"
         @click="deleteMessage"

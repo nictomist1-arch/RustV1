@@ -4,13 +4,14 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { getFileUrl } from "../types/file";
 
 import type { User } from "../types/user";
-import type { ChatCreate } from "../types/chats";
+import type { ChatCreate, ChatKind } from "../types/chats";
 
 const props = defineProps<{
   users: User[];
   currentUserId: number;
   saving: boolean;
   error: string;
+  kind: ChatKind;
 }>();
 
 const emit = defineEmits<{
@@ -38,11 +39,12 @@ function handleKey(event: KeyboardEvent){
 }
 
 function submitChat(){
-  if (props.saving || !title.value.trim() || participantIds.value.length === 0){
+  if (props.saving || !title.value.trim() || (props.kind === "chat" && participantIds.value.length === 0)){
     return;
   }
 
   emit("create", {
+    kind: props.kind,
     title: title.value.trim(),
     participantIds: [...participantIds.value],
   });
@@ -67,7 +69,7 @@ onUnmounted(() => {
         aria-labelledby="chat-create-title"
       >
         <header class="chat-card__header">
-          <h2 id="chat-create-title">Новый чат</h2>
+          <h2 id="chat-create-title">{{ kind === "channel" ? "Новый канал" : "Новый чат" }}</h2>
           <button
             type="button"
             class="chat-card__close"
@@ -81,7 +83,7 @@ onUnmounted(() => {
 
         <form class="chat-form" @submit.prevent="submitChat">
           <label for="chat-title" class="chat-field">
-            <span>Название чата</span>
+            <span>{{ kind === "channel" ? "Название канала" : "Название чата" }}</span>
             <input
               id="chat-title"
               v-model="title"
@@ -93,8 +95,12 @@ onUnmounted(() => {
           </label>
 
           <fieldset class="chat-participants" :disabled="saving">
-            <legend>Участники</legend>
-            <p class="chat-hint">Вы будете добавлены автоматически.</p>
+            <legend>{{ kind === "channel" ? "Читатели" : "Участники" }}</legend>
+            <p class="chat-hint">
+              {{ kind === "channel"
+                ? "Вы — владелец канала. Только вы сможете публиковать посты, выбранные пользователи смогут их читать."
+                : "Вы будете добавлены автоматически." }}
+            </p>
             <div class="chat-participants__list">
               <label
                 v-for="user in availableUsers"
@@ -128,9 +134,9 @@ onUnmounted(() => {
             <button
               type="submit"
               class="chat-button chat-button--primary"
-              :disabled="saving || !title.trim() || participantIds.length === 0"
+              :disabled="saving || !title.trim() || (kind === 'chat' && participantIds.length === 0)"
             >
-              {{ saving ? "Создание..." : "Создать чат" }}
+              {{ saving ? "Создание..." : kind === "channel" ? "Создать канал" : "Создать чат" }}
             </button>
           </footer>
         </form>

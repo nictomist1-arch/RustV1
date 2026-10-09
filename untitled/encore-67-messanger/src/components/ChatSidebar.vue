@@ -10,6 +10,7 @@ defineProps<{
 const emit = defineEmits<{
   select: [chat: Chat];
   create: [];
+  createChannel: [];
 }>();
 
 function selectChat(chat: Chat){
@@ -20,10 +21,15 @@ function selectChat(chat: Chat){
 <template>
 <aside class="sidebar">
   <div class="sidebar__header">
-    <span>Чаты</span>
+    <span>Чаты и каналы</span>
+    <div class="sidebar__actions">
     <button type="button" class="sidebar__create" @click="emit('create')">
       Новый чат
     </button>
+    <button type="button" class="sidebar__create" @click="emit('createChannel')">
+      Новый канал
+    </button>
+    </div>
   </div>
 
   <div class="sidebar__list">
@@ -43,7 +49,7 @@ function selectChat(chat: Chat){
       </strong><span v-if="chat.unread_count > 0" class="chat-button__badge">{{ chat.unread_count }}</span></div>
 
       <span class="chat-button__subtitle">
-        {{ chat.subtitle }}
+        {{ chat.kind === 'channel' ? 'Канал · ' : '' }}{{ chat.subtitle }}
       </span>
     </button>
   </div>
@@ -68,6 +74,7 @@ function selectChat(chat: Chat){
 
 .sidebar__header{
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -75,6 +82,11 @@ function selectChat(chat: Chat){
   padding: 18px;
   border-bottom: 1px solid var(--bubble);
   font-weight: 600;
+}
+
+.sidebar__actions{
+  display: flex;
+  gap: 8px;
 }
 
 .sidebar__create{

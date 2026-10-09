@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, useTemplateRef, watch } from "vue";
+import { nextTick, onMounted, ref, useTemplateRef, watch } from "vue";
 
 import { open } from "@tauri-apps/plugin-dialog";
 
@@ -8,10 +8,16 @@ import { invoke } from "@tauri-apps/api/core";
 import EmojiPanel from "../emoji/EmojiPanel.vue";
 
 import type { Message } from "../types/message";
-const props = defineProps<{ editingMessage: Message | null; saving: boolean }>();
+const props = defineProps<{
+  editingMessage: Message | null;
+  commentMessage: Message | null;
+  commentError: string;
+  saving: boolean;
+}>();
 const emit = defineEmits<{
   edit: [messageId: number, body: string];
   cancelEdit: [];
+  cancelComment: [];
   send: [body: string];
   sendImage: [path: string];
   sendSticker: [src: string];
@@ -21,6 +27,29 @@ const draft = ref("");
 const isEmojiPanelOpen = ref(false);
 const cursorPos = ref(0);
 const inputEl = useTemplateRef<HTMLInputElement>("draft-input");
+
+onMounted(() => {
+  if (props.commentMessage){
+    inputEl.value?.focus();
+  }
+});
+
+watch(() => props.saving, (saving, previous) => {
+  if (props.commentMessage && previous && !saving && !props.commentError){
+    draft.value = "";
+    cursorPos.value = 0;
+    nextTick(() => inputEl.value?.focus());
+  }
+});
+
+function cancelMode(){
+  if (props.saving) return;
+  if (props.commentMessage){
+    emit("cancelComment");
+  } else {
+    emit("cancelEdit");
+  }
+}
 
 let savedDraft = "";
 watch(() => props.editingMessage, async (message, previous) => {
@@ -54,7 +83,7 @@ function addEmoji(emoji: string) {
 }
 
 function sendSticker(src: string) {
-  if (props.editingMessage) return;
+  if (props.editingMessage || props.commentMessage) return;
   emit("sendSticker", src);
   isEmojiPanelOpen.value = false;
 }
@@ -64,6 +93,12 @@ function submitMessage() {
   const body = draft.value.trim();
 
   if (!body) return;
+
+  if (props.commentMessage){
+    if (body.length > 1000) return;
+    emit("send", body);
+    return;
+  }
 
   if (props.editingMessage) { emit("edit", props.editingMessage.id, body); return; }
   emit("send", body);
@@ -78,7 +113,7 @@ function toggleEmojiPanel() {
 }
 
 async function selectImage() {
-  if (props.editingMessage) return;
+  if (props.editingMessage || props.commentMessage) return;
   const file = await open({
     multiple: false,
     filters: [
@@ -103,12 +138,20 @@ async function selectImage() {
 
 <template>
   <form class="composer" @submit.prevent="submitMessage">
+    <div v-if="commentMessage" class="comment-banner">
+      <span class="comment-banner__text">
+        Комментарий к посту: {{ commentMessage.type === 'image' ? 'Изображение' : commentMessage.body }}
+      </span>
+      <button type="button" :disabled="saving" @click="emit('cancelComment')">Отмена</button>
+    </div>
+    <p v-if="commentError" class="comment-error" role="alert">{{ commentError }}</p>
     <div v-if="editingMessage" class="editing-banner">
       <span>Редактирование сообщения</span>
       <button type="button" :disabled="saving" @click="emit('cancelEdit')">Отмена</button>
     </div>
     <div class="input-group">
       <button
+        v-if="!commentMessage"
         type="button"
         class="icon-btn"
         title="Прикрепить файл"
@@ -122,10 +165,12 @@ async function selectImage() {
         ref="draft-input"
         v-model="draft"
         type="text"
-        placeholder="Ну пиши уже че нить"
+        :placeholder="commentMessage ? 'Написать комментарий' : 'Ну пиши уже че нить'"
+        :aria-label="commentMessage ? 'Комментарий к посту' : 'Сообщение'"
+        :maxlength="commentMessage ? 1000 : undefined"
         autocomplete="off"
         :disabled="saving"
-        @keydown.esc.prevent="!saving && emit('cancelEdit')"
+        @keydown.esc.prevent="cancelMode"
         @click="rememberCursor"
         @keyup="rememberCursor"
         @select="rememberCursor"
@@ -140,14 +185,14 @@ async function selectImage() {
       >
         😊
       </button>
-      <button type="submit" :disabled="saving || !draft.trim()">{{ editingMessage ? "Сохранить" : "Отправить" }}</button>
+      <button type="submit" :disabled="saving || !draft.trim()">{{ editingMessage ? "Сохранить" : commentMessage ? "Комментировать" : "Отправить" }}</button>
     </div>
 
     <EmojiPanel
       v-if="isEmojiPanelOpen"
       class="composer-emoji-panel"
       prevent-mouse-down
-      :show-stickers="!editingMessage"
+      :show-stickers="!editingMessage && !commentMessage"
       @select="addEmoji"
       @select-sticker="sendSticker"
     />
@@ -155,6 +200,37 @@ async function selectImage() {
 </template>
 
 <style scoped>
+.comment-banner{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.comment-banner__text{
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-banner button{
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.comment-error{
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
 .editing-banner{display:flex;align-items:center;justify-content:space-between;color:var(--muted)}
 .editing-banner button{border:0;background:transparent;color:var(--muted);cursor:pointer}
 .composer button:disabled{opacity:0.5;cursor:default}
